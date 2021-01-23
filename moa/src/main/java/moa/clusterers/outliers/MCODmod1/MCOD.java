@@ -41,6 +41,10 @@ import java.util.Vector;
 public class MCOD extends MCODBase {
     public FloatOption radiusOption = new FloatOption("radius", 'r', "Search radius.", 0.1);
     public IntOption kOption = new IntOption("k", 't', "Parameter k.", 50);
+    public FloatOption rdOption = new FloatOption("rd", 'j', "Parameter rd.", 1.5);
+
+    // DIAG ONLY -- DELETE
+    int diagCounter = 0;
     
     public MCOD()
     {
@@ -54,6 +58,7 @@ public class MCOD extends MCODBase {
         m_WindowSize = windowSizeOption.getValue();
         m_radius = radiusOption.getValue();
         m_k = kOption.getValue();
+        m_rd = rdOption.getValue();
                 
         Println("Init MCOD:");
         Println("   window_size: " + m_WindowSize);
@@ -123,11 +128,13 @@ public class MCOD extends MCODBase {
     
     void ProcessNewNode(ISBNode nodeNew, boolean bNewNode) {
         if (bTrace) { Print("ProcessNewNode: "); PrintNode(nodeNew); }
-        
+
+        double queryRange = Math.max(1.5 * m_radius, m_rd * m_radius); // The range for which the range query will be executed
+        // The range query's range is >= 3R/2
         if (bTrace) Println("Perform 3R/2 range query to cluster centers w.r.t new node"); 
         Vector<SearchResultMC> resultsMC;
         // results are sorted ascenting by distance
-        resultsMC = RangeSearchMC(nodeNew, 1.5 * m_radius); 
+        resultsMC = RangeSearchMC(nodeNew, queryRange);
         if (bTrace) {
             Println("MC query found: "); 
             for (SearchResultMC sr : resultsMC) {
@@ -248,44 +255,53 @@ public class MCOD extends MCODBase {
                     if (bTrace) { Print(q.id + ".Rmc: "); PrintMCSet(q.Rmc); }
                 }
             } else {
-                if (bTrace) Println("Add to nodeNew neighs nodes of near micro-clusters"); 
-                for (SearchResultMC sr : resultsMC) {
-                    for (ISBNode q : sr.mc.nodes) {
-                        if (GetEuclideanDist(q, nodeNew) <= m_radius) {
-                            // add q to neighs of nodeNew
-                            AddNeighbor(nodeNew, q, false);
+                // Check whether nodeNew is within rd * m_radius range of a micro-cluster center
+                // (Modification1 - Approximate MCOD condition)
+                // If the condition is satisfied, add newNode to PD list, otherwise discard it.
+                if (resultsMC.size() > 0 || ISB_PD.GetAllNodes().size() < m_WindowSize/4) {
+                    if (bTrace) Println("Add to nodeNew neighs nodes of near micro-clusters");
+                    for (SearchResultMC sr : resultsMC) {
+                        for (ISBNode q : sr.mc.nodes) {
+                            if (GetEuclideanDist(q, nodeNew) <= m_radius) {
+                                // add q to neighs of nodeNew
+                                AddNeighbor(nodeNew, q, false);
+                            }
                         }
                     }
-                }
-                if (bTrace) { 
-                    Println("nodeNew.count_after = " + nodeNew.count_after); 
-                    Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before()); 
-                }
-                
-                if (bTrace) Println("Insert nodeNew to index of nodes of PD"); 
-                ISB_PD.Insert(nodeNew); 
-                if (bTrace) PrintPD();
-                
-                // check if nodeNew is an inlier or outlier
-                // use both nn_before and count_after for case bNewNode=false
-                int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
-                if (count >= m_k) {
-                    if (bTrace) Println("nodeNew is an inlier"); 
-                    SetNodeType(nodeNew, NodeType.INLIER_PD);                    
-                    // insert nodeNew to event queue
-                    ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
-                    AddToEventQueue(nodeNew, nodeMinExp);
+                    if (bTrace) {
+                        Println("nodeNew.count_after = " + nodeNew.count_after);
+                        Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before());
+                    }
+
+                    if (bTrace) Println("Insert nodeNew to index of nodes of PD");
+                    ISB_PD.Insert(nodeNew);
+                    if (bTrace) PrintPD();
+
+                    // check if nodeNew is an inlier or outlier
+                    // use both nn_before and count_after for case bNewNode=false
+                    int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
+                    if (count >= m_k) {
+                        if (bTrace) Println("nodeNew is an inlier");
+                        SetNodeType(nodeNew, NodeType.INLIER_PD);
+                        // insert nodeNew to event queue
+                        ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
+                        AddToEventQueue(nodeNew, nodeMinExp);
+                    } else {
+                        if (bTrace) Println("nodeNew is an outlier");
+                        SetNodeType(nodeNew, NodeType.OUTLIER);
+                        SaveOutlier(nodeNew);
+                    }
+
+                    if (bTrace) Println("Update nodeNew.Rmc");
+                    for (SearchResultMC sr : resultsMC) {
+                        nodeNew.Rmc.add(sr.mc);
+                    }
+                    if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); }
                 } else {
-                    if (bTrace) Println("nodeNew is an outlier");
-                    SetNodeType(nodeNew, NodeType.OUTLIER);
-                    SaveOutlier(nodeNew);
+                    /// DIAG ONLY -- DELETE
+                    diagCounter ++;
+                    System.out.println("diagCounter: " + diagCounter);
                 }
-                
-                if (bTrace) Println("Update nodeNew.Rmc"); 
-                for (SearchResultMC sr : resultsMC) {
-                    nodeNew.Rmc.add(sr.mc);
-                }                
-                if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); } 
             }
         }
     }
