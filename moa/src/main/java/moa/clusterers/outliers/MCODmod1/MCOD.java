@@ -42,6 +42,7 @@ public class MCOD extends MCODBase {
     public FloatOption radiusOption = new FloatOption("radius", 'r', "Search radius.", 0.1);
     public IntOption kOption = new IntOption("k", 't', "Parameter k.", 50);
     public FloatOption rdOption = new FloatOption("rd", 'j', "Parameter rd.", 1.5);
+    public FloatOption pdMinSizeFactorOption = new FloatOption("PDMinSizeFactor", 'p', "PD List's minimum size relative to the Window's size.", 0.125);
 
     // DIAG ONLY -- DELETE
     int diagCounter = 0;
@@ -59,6 +60,7 @@ public class MCOD extends MCODBase {
         m_radius = radiusOption.getValue();
         m_k = kOption.getValue();
         m_rd = rdOption.getValue();
+        m_PDMinSizeFactor = pdMinSizeFactorOption.getValue();
                 
         Println("Init MCOD:");
         Println("   window_size: " + m_WindowSize);
@@ -258,7 +260,7 @@ public class MCOD extends MCODBase {
                 // Check whether nodeNew is within rd * m_radius range of a micro-cluster center
                 // (Modification1 - Approximate MCOD condition)
                 // If the condition is satisfied, add newNode to PD list, otherwise discard it.
-                if (resultsMC.size() > 0 || ISB_PD.GetAllNodes().size() < m_WindowSize/4) {
+                if (resultsMC.size() > 0 || ISB_PD.GetAllNodes().size() < m_PDMinSizeFactor * m_WindowSize) {
                     if (bTrace) Println("Add to nodeNew neighs nodes of near micro-clusters");
                     for (SearchResultMC sr : resultsMC) {
                         for (ISBNode q : sr.mc.nodes) {
