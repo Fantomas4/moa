@@ -50,6 +50,7 @@ public class MCOD extends MCODBase {
 
     // DIAG ONLY -- DELETE
     int diagTotalClusterGenCount = 0;
+    int diagTotalApproxClusterGenCount = 0;
     int diagApproxCount = 0;
 
     public MCOD()
@@ -198,23 +199,16 @@ public class MCOD extends MCODBase {
             // Perform 3R/2 range query to nodes in set PD.
             if (bTrace) Println("Perform custom range query to nodes in set PD");
             nRangeQueriesExecuted++;
+            // Determine query range
+            double ar = (m_radius / 2.0) + (m_arFactor * m_radius); // Approximate query range determined by arFactor
+            double qRange = Math.max(1.5 * m_radius, ar);
             // create helper sets for micro-cluster management
-            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();
-            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>();
+            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();  // Neighbors to Cluster
+            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>(); // Not Neighbors to Cluster
+            ArrayList<ISBNode> setANC = new ArrayList<ISBNode>(); // Approximate Neighbors to Clusters
             Vector<ISBSearchResult> resultNodes;
-            resultNodes = ISB_PD.RangeSearch(nodeNew, 1.5 * m_radius); // 1.5 ###
-
-
-            // No close enough micro-cluster found.
-            // Perform 3R/2 range query to nodes in set PD.
-
-            if (bTrace) Println("Perform 3R/2 range query to nodes in set PD");     
-            nRangeQueriesExecuted++;
-            // create helper sets for micro-cluster management
-            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();
-            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>();
-            Vector<ISBSearchResult> resultNodes;
-            resultNodes = ISB_PD.RangeSearch(nodeNew, 1.5 * m_radius); // 1.5 ###
+            // Result nodes are returned in ascending order based on distance from nodeNew
+            resultNodes = ISB_PD.RangeSearch(nodeNew, qRange);
             for (ISBSearchResult sr : resultNodes) {
                 ISBNode q = sr.node;
                 if (sr.distance <= m_radius) {                    
@@ -233,15 +227,25 @@ public class MCOD extends MCODBase {
                 
                 if (sr.distance <= m_radius / 2.0) {
                     setNC.add(q);
-                } else {
+                } else if (sr.distance <= 1.5 * m_radius) {
                     setNNC.add(q);
+                    setANC.add(q);
+                } else {
+                    setANC.add(q);
                 }
             }
             if (bTrace) {
                 Print("Prec neighs of new node: "); PrintNodeList(nodeNew.Get_nn_before());
                 Print("NC: "); PrintNodeList(setNC); 
-                Print("NNC: "); PrintNodeList(setNNC); 
+                Print("NNC: "); PrintNodeList(setNNC);
+                Print("ANC: "); PrintNodeList(setANC);
             }
+
+            // Calculate the upper limit of approximate objects for m_k size
+            int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k));
+            // Calculate the amount of needed approximate objects to achieve k micro-cluster objects
+            int approxObjNeeded = m_k - setNC.size();
+            if (approxObjNeeded < 0) approxObjNeeded = 0;
             
             // check if size of set NC big enough to create cluster
             if (bTrace) Println("Check size of set NC"); 
@@ -276,8 +280,49 @@ public class MCOD extends MCODBase {
                     q.Rmc.add(mcNew);
                     if (bTrace) { Print(q.id + ".Rmc: "); PrintMCSet(q.Rmc); }
                 }
+            } else if (approxObjNeeded > 0 && approxObjNeeded <= approxObjLimit && setANC.size() >= approxObjNeeded) {
+                // DIAG ONLY -- DELETE
+                diagTotalApproxClusterGenCount += 1;
+                System.out.println("DIAG APPROX CLUSTER GEN COUNT: " + diagTotalApproxClusterGenCount);
+
+                // create new micro-cluster with center nodeNew
+                if (bTrace) Println("Create new approximate micro-cluster");
+                MicroCluster mcNew = new MicroCluster(nodeNew);
+                AddMicroCluster(mcNew);
+                nodeNew.mc = mcNew;
+                SetNodeType(nodeNew, NodeType.INLIER_MC);
+
+                // Add exact and approximate objects to the new approximate MC
+                if (bTrace) Println("Add to new mc nodes within range R/2");
+                for (ISBNode q : setNC) {
+                    q.mc = mcNew;
+                    mcNew.AddNode(q);
+                    // move q from set PD to set inlier-mc
+                    SetNodeType(q, NodeType.INLIER_MC);
+                    ISB_PD.Remove(q);
+                    RemoveOutlier(q); // needed? ###
+                }
+                if (bTrace) Println("Add to new mc nodes within the approximate query's range");
+                for (int i = 0 ; i < approxObjNeeded; i++) {
+                    ISBNode approxNode = setANC.get(i);
+                    approxNode.mc = mcNew;
+                    // move approxNode from set PD to set APPROX_INLIER_MC
+                    SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
+                    ISB_PD.Remove(approxNode);
+                    RemoveOutlier(approxNode); // needed? ###
+                }
+                if (bTrace) {
+                    Print("mcNew.nodes: "); PrintNodeList(mcNew.nodes);
+                    PrintPD();
+                }
+
+                if (bTrace) Println("Update Rmc lists of nodes of PD in range 3R/2 from mcNew");
+                for (ISBNode q : setNNC) {
+                    q.Rmc.add(mcNew);
+                    if (bTrace) { Print(q.id + ".Rmc: "); PrintMCSet(q.Rmc); }
+                }
             } else {
-                if (bTrace) Println("Add to nodeNew neighs nodes of near micro-clusters"); 
+                if (bTrace) Println("Add to nodeNew neighs nodes of near micro-clusters");
                 for (SearchResultMC sr : resultsMC) {
                     for (ISBNode q : sr.mc.nodes) {
                         if (GetEuclideanDist(q, nodeNew) <= m_radius) {
@@ -286,21 +331,21 @@ public class MCOD extends MCODBase {
                         }
                     }
                 }
-                if (bTrace) { 
-                    Println("nodeNew.count_after = " + nodeNew.count_after); 
-                    Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before()); 
+                if (bTrace) {
+                    Println("nodeNew.count_after = " + nodeNew.count_after);
+                    Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before());
                 }
-                
-                if (bTrace) Println("Insert nodeNew to index of nodes of PD"); 
-                ISB_PD.Insert(nodeNew); 
+
+                if (bTrace) Println("Insert nodeNew to index of nodes of PD");
+                ISB_PD.Insert(nodeNew);
                 if (bTrace) PrintPD();
-                
+
                 // check if nodeNew is an inlier or outlier
                 // use both nn_before and count_after for case bNewNode=false
                 int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
                 if (count >= m_k) {
-                    if (bTrace) Println("nodeNew is an inlier"); 
-                    SetNodeType(nodeNew, NodeType.INLIER_PD);                    
+                    if (bTrace) Println("nodeNew is an inlier");
+                    SetNodeType(nodeNew, NodeType.INLIER_PD);
                     // insert nodeNew to event queue
                     ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
                     AddToEventQueue(nodeNew, nodeMinExp);
@@ -309,12 +354,12 @@ public class MCOD extends MCODBase {
                     SetNodeType(nodeNew, NodeType.OUTLIER);
                     SaveOutlier(nodeNew);
                 }
-                
-                if (bTrace) Println("Update nodeNew.Rmc"); 
+
+                if (bTrace) Println("Update nodeNew.Rmc");
                 for (SearchResultMC sr : resultsMC) {
                     nodeNew.Rmc.add(sr.mc);
-                }                
-                if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); } 
+                }
+                if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); }
             }
         }
     }
@@ -380,6 +425,7 @@ public class MCOD extends MCODBase {
 
                     // Calculate the upper limit of approximate objects for m_k size
                     int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k)) - mc.approxNodeCount;
+                    // Calculate the amount of needed approximate objects to achieve k micro-cluster objects
                     int approxObjNeeded = m_k - mc.GetNodesCount();
                     // Check if the amount of needed approximate objects is equal or less than the limit
                     boolean approxLimitOK = approxObjNeeded <= approxObjLimit;
@@ -392,7 +438,7 @@ public class MCOD extends MCODBase {
                     if (approxLimitOK && approxObjFound) {
                         // DIAG ONLY -- DELETE
                         diagApproxCount++;
-                        System.out.println("DIAG APPROX COUNT: " + diagApproxCount);
+                        System.out.println("DIAG APPROX EXP SUSTAINED COUNT: " + diagApproxCount);
 
                         if (bTrace) Println("Add new approximate nodes to micro-cluster");
                         // Add the approximate nodes needed to the MC's nodes
