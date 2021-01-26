@@ -196,6 +196,17 @@ public class MCOD extends MCODBase {
         else {
             // No close enough micro-cluster found.
             // Perform 3R/2 range query to nodes in set PD.
+            if (bTrace) Println("Perform custom range query to nodes in set PD");
+            nRangeQueriesExecuted++;
+            // create helper sets for micro-cluster management
+            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();
+            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>();
+            Vector<ISBSearchResult> resultNodes;
+            resultNodes = ISB_PD.RangeSearch(nodeNew, 1.5 * m_radius); // 1.5 ###
+
+
+            // No close enough micro-cluster found.
+            // Perform 3R/2 range query to nodes in set PD.
 
             if (bTrace) Println("Perform 3R/2 range query to nodes in set PD");     
             nRangeQueriesExecuted++;
@@ -373,7 +384,7 @@ public class MCOD extends MCODBase {
                     // Check if the amount of needed approximate objects is equal or less than the limit
                     boolean approxLimitOK = approxObjNeeded <= approxObjLimit;
                     // Search for approximate objects in range ar = (R/2) + (m_arFactor * R) from MC's center.
-                    double ar = (m_radius / 2) + (m_arFactor * m_radius);
+                    double ar = (m_radius / 2.0) + (m_arFactor * m_radius);
                     Vector<ISBSearchResult> resultNodes;
                     resultNodes = ISB_PD.RangeSearch(mc.mcc, ar);
                     boolean approxObjFound = resultNodes.size() >= approxObjNeeded;
