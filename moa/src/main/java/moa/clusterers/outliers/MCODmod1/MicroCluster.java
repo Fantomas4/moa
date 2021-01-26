@@ -28,21 +28,31 @@ import java.util.ArrayList;
 public class MicroCluster implements EuclideanCoordinate, Comparable<MicroCluster> {
     public ISBNode mcc;
     public ArrayList<ISBNode> nodes;
+    public int approxNodeCount;
 
     public MicroCluster(ISBNode mcc) {
         this.mcc = mcc;
         nodes = new ArrayList<ISBNode>();
+        approxNodeCount = 0;
         AddNode(mcc);
     }
     
     public void AddNode(ISBNode node) {
-        if (node != null)
+        if (node != null) {
             nodes.add(node);
+            if (node.nodeType == ISBNode.NodeType.APPROX_INLIER_MC) {
+                approxNodeCount += 1;
+            }
+        }
     }
     
     public void RemoveNode(ISBNode node) {
-        if (node != null)
+        if (node != null) {
             nodes.remove(node);
+            if (node.nodeType == ISBNode.NodeType.APPROX_INLIER_MC) {
+                approxNodeCount -= 1;
+            }
+        }
     }
     
     public int GetNodesCount() {

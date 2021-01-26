@@ -43,13 +43,14 @@ public class MCOD extends MCODBase {
     public IntOption kOption = new IntOption("k", 't', "Parameter k.", 50);
     public FloatOption arFactorOption = new FloatOption("ApproximationRadiusFactor", 'b',
             "A factor b that determines the search radius relevant to R/2 for an MC's approximate neighbors (ar = R/2 + b * R/2",
-            1);
+            0.5);
     public FloatOption mcApproxFactor = new FloatOption("MCApproximationFactor", 'c',
             "A factor c that determines the maximum amount of approximate nodes that can be included in a viable MC (apprNodeNumber = c * mcSize ",
             0.2);
 
     // DIAG ONLY -- DELETE
-    int diagCount = 0;
+    int diagTotalClusterGenCount = 0;
+    int diagApproxCount = 0;
 
     public MCOD()
     {
@@ -66,10 +67,12 @@ public class MCOD extends MCODBase {
         m_arFactor = arFactorOption.getValue();
         m_mcApproxFactor = mcApproxFactor.getValue();
                 
-        Println("Init MCOD:");
+        Println("Init MCODmod1:");
         Println("   window_size: " + m_WindowSize);
         Println("   radius: " + m_radius);
         Println("   k: " + m_k);
+        Println("   ApproximationRadiusFactor: " + m_arFactor);
+        Println("   MCApproximationFactor: " + m_mcApproxFactor);
         
         //bTrace = true;
         //bWarning = true;
@@ -232,6 +235,10 @@ public class MCOD extends MCODBase {
             // check if size of set NC big enough to create cluster
             if (bTrace) Println("Check size of set NC"); 
             if (setNC.size() >= m_theta * m_k) {
+                // DIAG ONLY -- DELETE
+                diagTotalClusterGenCount += 1;
+                System.out.println("DIAG CLUSTER GEN COUNT: " + diagTotalClusterGenCount);
+
                 // create new micro-cluster with center nodeNew
                 if (bTrace) Println("Create new micro-cluster"); 
                 MicroCluster mcNew = new MicroCluster(nodeNew);
@@ -361,7 +368,7 @@ public class MCOD extends MCODBase {
                     // Check if the MC's missing objects can be provided by approximate objects
 
                     // Calculate the upper limit of approximate objects for m_k size
-                    int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k));
+                    int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k)) - mc.approxNodeCount;
                     int approxObjNeeded = m_k - mc.GetNodesCount();
                     // Check if the amount of needed approximate objects is equal or less than the limit
                     boolean approxLimitOK = approxObjNeeded <= approxObjLimit;
@@ -373,8 +380,8 @@ public class MCOD extends MCODBase {
                     // Check whether both approximation limit was satisfied and approximate objects in range were found
                     if (approxLimitOK && approxObjFound) {
                         // DIAG ONLY -- DELETE
-                        diagCount++;
-                        System.out.println("DIAG COUNT: " + diagCount);
+                        diagApproxCount++;
+                        System.out.println("DIAG APPROX COUNT: " + diagApproxCount);
 
                         if (bTrace) Println("Add new approximate nodes to micro-cluster");
                         // Add the approximate nodes needed to the MC's nodes
@@ -382,8 +389,8 @@ public class MCOD extends MCODBase {
                             ISBNode approxNode = resultNodes.get(i).node;
                             // Update approxNode's MicroCluster
                             approxNode.mc = mc;
-                            // move approxNode from set PD to set inlier-mc
-                            SetNodeType(approxNode, NodeType.INLIER_MC);
+                            // move approxNode from set PD to set APPROX_INLIER_MC
+                            SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
                             ISB_PD.Remove(approxNode);
                             RemoveOutlier(approxNode); // needed? ###
                             // Add approxNode to the MC
