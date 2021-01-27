@@ -484,7 +484,6 @@ public class MCOD extends MCODBase {
         System.out.println("---------------------- MCODmod1 ----------------------");
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Approx MCs count: " + diagApproxMCCount);
-        System.out.println("DIAG - Total MCs Sustained by Approximation: " + diagApproxMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
