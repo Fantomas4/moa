@@ -522,6 +522,5 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
         System.out.println("-------------------------------------------------------");
-
     }
 }
