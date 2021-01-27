@@ -417,7 +417,7 @@ public class MCOD extends MCODBase {
         }
         // DIAG ONLY -- DELETE
         System.out.println("-------------------- MCOD baseline --------------------");
-        System.out.println("DIAG - Exact MCs count: " + diagExactMCCount);
+        System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
