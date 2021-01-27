@@ -454,6 +454,7 @@ public class MCOD extends MCODBase {
                         }
                     } else {
                         // DIAG ONLY -- DELETE
+                        diagDiscardedMCCount++;
                         diagTotalActiveMCCount --;
 
                         // remove micro-cluster mc
