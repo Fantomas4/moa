@@ -40,7 +40,12 @@ import com.yahoo.labs.samoa.instances.Instance;
 public class MCOD extends MCODBase {
     public FloatOption radiusOption = new FloatOption("radius", 'r', "Search radius.", 0.1);
     public IntOption kOption = new IntOption("k", 't', "Parameter k.", 50);
-    
+
+    // DIAG ONLY -- DELETE
+    int diagExactMCCount = 0;
+    int diagDiscardedMCCount = 0;
+    int diagTotalActiveMCCount = 0;
+
     public MCOD()
     {
         // System.out.println("MCOD: created");
@@ -220,6 +225,10 @@ public class MCOD extends MCODBase {
             // check if size of set NC big enough to create cluster
             if (bTrace) Println("Check size of set NC"); 
             if (setNC.size() >= m_theta * m_k) {
+                // DIAG ONLY -- DELETE
+                diagExactMCCount ++;
+                diagTotalActiveMCCount ++;
+
                 // create new micro-cluster with center nodeNew
                 if (bTrace) Println("Create new micro-cluster"); 
                 MicroCluster mcNew = new MicroCluster(nodeNew);
@@ -346,6 +355,10 @@ public class MCOD extends MCODBase {
                 
                 if (bTrace) Println("Check if mc has enough objects");
                 if (mc.GetNodesCount() < m_k) {
+                    // DIAG ONLY -- DELETE
+                    diagDiscardedMCCount ++;
+                    diagTotalActiveMCCount --;
+
                     // remove micro-cluster mc
                     if (bTrace) Println("Remove mc");
                     RemoveMicroCluster(mc);
@@ -402,5 +415,12 @@ public class MCOD extends MCODBase {
             PrintOutliers();
             PrintPD();
         }
+        // DIAG ONLY -- DELETE
+        System.out.println("-------------------- MCOD baseline --------------------");
+        System.out.println("DIAG - Exact MCs count: " + diagExactMCCount);
+        System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
+        System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
+        System.out.println("-------------------------------------------------------");
     }
 }

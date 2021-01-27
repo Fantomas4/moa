@@ -147,6 +147,11 @@ public class ISBIndex {
         m_radius = radius;
         m_k = k;
     }
+
+    // DIAG ONLY -- DELETE
+    public int getMapSize() {
+        return mapNodes.size();
+    }
     
     Vector<ISBNode> GetAllNodes() {
         Vector<ISBNode> v = new Vector<ISBNode>(); 

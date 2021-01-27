@@ -149,7 +149,12 @@ public class ISBIndex {
     Map<Integer, Set<ISBNode>> mapNodes;
     double m_radius;
     int m_k; // k nearest neighbors
-    
+
+    // DIAG ONLY -- DELETE
+    public int getMapSize() {
+        return mapNodes.size();
+    }
+
     public ISBIndex(double radius, int k) {
         mtree = new MTreeStreamObjects();
         mapNodes = new HashMap<Integer, Set<ISBNode>>();

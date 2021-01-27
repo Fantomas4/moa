@@ -49,9 +49,11 @@ public class MCOD extends MCODBase {
             0.2);
 
     // DIAG ONLY -- DELETE
-    int diagTotalClusterGenCount = 0;
-    int diagTotalApproxClusterGenCount = 0;
-    int diagApproxCount = 0;
+    int diagExactMCCount = 0;
+    int diagApproxMCCount = 0;
+    int diagDiscardedMCCount = 0;
+    int diagMCSustainedCount = 0;
+    int diagTotalActiveMCCount = 0;
 
     public MCOD()
     {
@@ -227,11 +229,9 @@ public class MCOD extends MCODBase {
                 
                 if (sr.distance <= m_radius / 2.0) {
                     setNC.add(q);
-                } else if (sr.distance <= 1.5 * m_radius) {
-                    setNNC.add(q);
-                    setANC.add(q);
                 } else {
-                    setANC.add(q);
+                    setNNC.add(q);
+                    if (sr.distance <= ar) setANC.add(q);
                 }
             }
             if (bTrace) {
@@ -251,8 +251,8 @@ public class MCOD extends MCODBase {
             if (bTrace) Println("Check size of set NC"); 
             if (setNC.size() >= m_theta * m_k) {
                 // DIAG ONLY -- DELETE
-                diagTotalClusterGenCount += 1;
-                System.out.println("DIAG CLUSTER GEN COUNT: " + diagTotalClusterGenCount);
+                diagExactMCCount ++;
+                diagTotalActiveMCCount ++;
 
                 // create new micro-cluster with center nodeNew
                 if (bTrace) Println("Create new micro-cluster"); 
@@ -282,8 +282,8 @@ public class MCOD extends MCODBase {
                 }
             } else if (approxObjNeeded > 0 && approxObjNeeded <= approxObjLimit && setANC.size() >= approxObjNeeded) {
                 // DIAG ONLY -- DELETE
-                diagTotalApproxClusterGenCount += 1;
-                System.out.println("DIAG APPROX CLUSTER GEN COUNT: " + diagTotalApproxClusterGenCount);
+                diagApproxMCCount ++;
+                diagTotalActiveMCCount ++;
 
                 // create new micro-cluster with center nodeNew
                 if (bTrace) Println("Create new approximate micro-cluster");
@@ -437,8 +437,7 @@ public class MCOD extends MCODBase {
                     // Check whether both approximation limit was satisfied and approximate objects in range were found
                     if (approxLimitOK && approxObjFound) {
                         // DIAG ONLY -- DELETE
-                        diagApproxCount++;
-                        System.out.println("DIAG APPROX EXP SUSTAINED COUNT: " + diagApproxCount);
+                        diagMCSustainedCount ++;
 
                         if (bTrace) Println("Add new approximate nodes to micro-cluster");
                         // Add the approximate nodes needed to the MC's nodes
@@ -454,6 +453,9 @@ public class MCOD extends MCODBase {
                             mc.AddNode(approxNode);
                         }
                     } else {
+                        // DIAG ONLY -- DELETE
+                        diagTotalActiveMCCount --;
+
                         // remove micro-cluster mc
                         if (bTrace) Println("Remove mc");
                         RemoveMicroCluster(mc);
@@ -511,5 +513,15 @@ public class MCOD extends MCODBase {
             PrintOutliers();
             PrintPD();
         }
+        // DIAG ONLY -- DELETE
+        System.out.println("---------------------- MCODmod1 ----------------------");
+        System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
+        System.out.println("DIAG - Total Approx MCs count: " + diagApproxMCCount);
+        System.out.println("DIAG - Total MCs Sustained by Approximation: " + diagApproxMCCount);
+        System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
+        System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
+        System.out.println("-------------------------------------------------------");
+
     }
 }
