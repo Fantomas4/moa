@@ -53,6 +53,8 @@ public class MCOD extends MCODBase {
     int diagApproxMCCount = 0;
     int diagDiscardedMCCount = 0;
     int diagTotalActiveMCCount = 0;
+    int diagTotalPointsAddedToMC = 0;
+    int diagPDListPopulation = 0;
 
     public MCOD()
     {
@@ -170,7 +172,11 @@ public class MCOD extends MCODBase {
         }
         
         if (bFoundMC) {
-            if (bTrace) Println("Add new node to micro-cluster"); 
+            if (bTrace) Println("Add new node to micro-cluster");
+            // DIAG ONLY -- DELETE
+            diagTotalPointsAddedToMC ++;
+            diagTotalActiveMCCount ++;
+
             nodeNew.mc = mcClosest;
             SetNodeType(nodeNew, NodeType.INLIER_MC);
             mcClosest.AddNode(nodeNew);
@@ -258,15 +264,22 @@ public class MCOD extends MCODBase {
                 MicroCluster mcNew = new MicroCluster(nodeNew);
                 AddMicroCluster(mcNew);
                 nodeNew.mc = mcNew;
+                // DIAG ONLY -- DELETE
+                diagTotalPointsAddedToMC ++;
                 SetNodeType(nodeNew, NodeType.INLIER_MC);
                 
                 if (bTrace) Println("Add to new mc nodes within range R/2"); 
                 for (ISBNode q : setNC) {
                     q.mc = mcNew;
+                    // DIAG ONLY -- DELETE
+                    diagTotalPointsAddedToMC ++;
                     mcNew.AddNode(q);
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation --;
+                    diagTotalPointsAddedToMC ++;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) { 
@@ -299,6 +312,9 @@ public class MCOD extends MCODBase {
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation --;
+                    diagTotalPointsAddedToMC ++;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) Println("Add to new mc nodes within the approximate query's range");
@@ -308,6 +324,9 @@ public class MCOD extends MCODBase {
                     // move approxNode from set PD to set APPROX_INLIER_MC
                     SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
                     ISB_PD.Remove(approxNode);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation --;
+                    diagTotalPointsAddedToMC ++;
                     RemoveOutlier(approxNode); // needed? ###
                 }
                 if (bTrace) {
@@ -337,6 +356,8 @@ public class MCOD extends MCODBase {
 
                 if (bTrace) Println("Insert nodeNew to index of nodes of PD");
                 ISB_PD.Insert(nodeNew);
+                // DIAG ONLY -- DELETE
+                diagPDListPopulation ++;
                 if (bTrace) PrintPD();
 
                 // check if nodeNew is an inlier or outlier
@@ -445,6 +466,8 @@ public class MCOD extends MCODBase {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
+                // DIAG ONLY -- DELETE
+                diagPDListPopulation --;
             }
 
             RemoveNode(nodeExpired);
@@ -485,8 +508,9 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Approx MCs count: " + diagApproxMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
+        System.out.println("DIAG - Total Points added to MCs: " + diagTotalPointsAddedToMC);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
         System.out.println("-------------------------------------------------------");
     }
 }

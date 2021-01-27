@@ -44,7 +44,9 @@ public class MCOD extends MCODBase {
     // DIAG ONLY -- DELETE
     int diagExactMCCount = 0;
     int diagDiscardedMCCount = 0;
+    int diagTotalPointsAddedToMC = 0;
     int diagTotalActiveMCCount = 0;
+    int diagPDListPopulation = 0;
 
     public MCOD()
     {
@@ -158,7 +160,9 @@ public class MCOD extends MCODBase {
         }
         
         if (bFoundMC) {
-            if (bTrace) Println("Add new node to micro-cluster"); 
+            if (bTrace) Println("Add new node to micro-cluster");
+            // DIAG ONLY -- DELETE
+            diagTotalPointsAddedToMC ++;
             nodeNew.mc = mcClosest;
             SetNodeType(nodeNew, NodeType.INLIER_MC);
             mcClosest.AddNode(nodeNew);
@@ -234,15 +238,21 @@ public class MCOD extends MCODBase {
                 MicroCluster mcNew = new MicroCluster(nodeNew);
                 AddMicroCluster(mcNew);
                 nodeNew.mc = mcNew;
+                // DIAG ONLY -- DELETE
+                diagTotalPointsAddedToMC ++;
                 SetNodeType(nodeNew, NodeType.INLIER_MC);
                 
                 if (bTrace) Println("Add to new mc nodes within range R/2"); 
                 for (ISBNode q : setNC) {
                     q.mc = mcNew;
+                    // DIAG ONLY -- DELETE
+                    diagTotalPointsAddedToMC ++;
                     mcNew.AddNode(q);
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation --;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) { 
@@ -271,7 +281,9 @@ public class MCOD extends MCODBase {
                 }
                 
                 if (bTrace) Println("Insert nodeNew to index of nodes of PD"); 
-                ISB_PD.Insert(nodeNew); 
+                ISB_PD.Insert(nodeNew);
+                // DIAG ONLY -- DELETE
+                diagPDListPopulation ++;
                 if (bTrace) PrintPD();
                 
                 // check if nodeNew is an inlier or outlier
@@ -380,6 +392,8 @@ public class MCOD extends MCODBase {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
+                // DIAG ONLY -- DELETE
+                diagPDListPopulation --;
             }
             
             RemoveNode(nodeExpired);
@@ -419,8 +433,9 @@ public class MCOD extends MCODBase {
         System.out.println("-------------------- MCOD baseline --------------------");
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
+        System.out.println("DIAG - Total Points added to MCs: " + diagTotalPointsAddedToMC);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.getMapSize());
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
         System.out.println("-------------------------------------------------------");
     }
 }
