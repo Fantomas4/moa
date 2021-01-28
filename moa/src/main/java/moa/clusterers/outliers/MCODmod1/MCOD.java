@@ -50,7 +50,7 @@ public class MCOD extends MCODBase {
 
     // DIAG ONLY -- DELETE
     int diagExactMCCount = 0;
-    int diagApproxMCCount = 0;
+    int diagSustainedMCCount = 0;
     int diagDiscardedMCCount = 0;
     int diagAdditionsToMC = 0;
     int diagAdditionsToPD = 0;
@@ -138,28 +138,28 @@ public class MCOD extends MCODBase {
             }
         }
     }
-    
+
     void ProcessNewNode(ISBNode nodeNew, boolean bNewNode) {
         if (bTrace) { Print("ProcessNewNode: "); PrintNode(nodeNew); }
-        
-        if (bTrace) Println("Perform 3R/2 range query to cluster centers w.r.t new node"); 
+
+        if (bTrace) Println("Perform 3R/2 range query to cluster centers w.r.t new node");
         Vector<SearchResultMC> resultsMC;
         // results are sorted ascenting by distance
-        resultsMC = RangeSearchMC(nodeNew, 1.5 * m_radius); 
+        resultsMC = RangeSearchMC(nodeNew, 1.5 * m_radius);
         if (bTrace) {
-            Println("MC query found: "); 
+            Println("MC query found: ");
             for (SearchResultMC sr : resultsMC) {
                 Printf("  (%.1f) mcc: ", sr.distance); PrintNode(sr.mc.mcc);
             }
         }
-        
-        if (bTrace) Println("Get closest micro-cluster"); 
+
+        if (bTrace) Println("Get closest micro-cluster");
         MicroCluster mcClosest = null;
-        if (resultsMC.size() > 0) { 
+        if (resultsMC.size() > 0) {
             mcClosest = resultsMC.get(0).mc;
             if (bTrace) Println("Closest mcc: " + mcClosest.mcc.id);
         }
-        
+
         // check if nodeNew can be insterted to closest micro-cluster
         boolean bFoundMC = false;
         if (mcClosest != null) {
@@ -167,21 +167,20 @@ public class MCOD extends MCODBase {
             if (d <= m_radius / 2) {
                 bFoundMC = true;
             } else {
-                if (bTrace) Println("Not close enough to closest mcc"); 
+                if (bTrace) Println("Not close enough to closest mcc");
             }
         }
-        
+
         if (bFoundMC) {
             if (bTrace) Println("Add new node to micro-cluster");
             // DIAG ONLY -- DELETE
             diagAdditionsToMC++;
-
             nodeNew.mc = mcClosest;
             SetNodeType(nodeNew, NodeType.INLIER_MC);
             mcClosest.AddNode(nodeNew);
-            if (bTrace) { Print("mcClosest.nodes: "); PrintNodeList(mcClosest.nodes); } 
-            
-            if (bTrace) Println("Update neighbors of set PD"); 
+            if (bTrace) { Print("mcClosest.nodes: "); PrintNodeList(mcClosest.nodes); }
+
+            if (bTrace) Println("Update neighbors of set PD");
             Vector<ISBNode> nodes;
             nodes = ISB_PD.GetAllNodes();
             for (ISBNode q : nodes) {
@@ -203,26 +202,22 @@ public class MCOD extends MCODBase {
         else {
             // No close enough micro-cluster found.
             // Perform 3R/2 range query to nodes in set PD.
-            if (bTrace) Println("Perform custom range query to nodes in set PD");
+
+            if (bTrace) Println("Perform 3R/2 range query to nodes in set PD");
             nRangeQueriesExecuted++;
-            // Determine query range
-            double ar = (m_radius / 2.0) + (m_arFactor * m_radius); // Approximate query range determined by arFactor
-            double qRange = Math.max(1.5 * m_radius, ar);
             // create helper sets for micro-cluster management
-            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();  // Neighbors to Cluster
-            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>(); // Not Neighbors to Cluster
-            ArrayList<ISBNode> setANC = new ArrayList<ISBNode>(); // Approximate Neighbors to Clusters
+            ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();
+            ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>();
             Vector<ISBSearchResult> resultNodes;
-            // Result nodes are returned in ascending order based on distance from nodeNew
-            resultNodes = ISB_PD.RangeSearch(nodeNew, qRange);
+            resultNodes = ISB_PD.RangeSearch(nodeNew, 1.5 * m_radius); // 1.5 ###
             for (ISBSearchResult sr : resultNodes) {
                 ISBNode q = sr.node;
-                if (sr.distance <= m_radius) {                    
+                if (sr.distance <= m_radius) {
                     // add q to neighs of nodeNew
-                    AddNeighbor(nodeNew, q, false);                
+                    AddNeighbor(nodeNew, q, false);
                     if (bNewNode) {
                         // update q.count_after and its' outlierness
-                        AddNeighbor(q, nodeNew, true); 
+                        AddNeighbor(q, nodeNew, true);
                     } else {
                         if (nodesReinsert.contains(q)) {
                             // update q.count_after or q.nn_before and its' outlierness
@@ -230,102 +225,46 @@ public class MCOD extends MCODBase {
                         }
                     }
                 }
-                
+
                 if (sr.distance <= m_radius / 2.0) {
                     setNC.add(q);
                 } else {
                     setNNC.add(q);
-                    if (sr.distance <= ar) setANC.add(q);
                 }
             }
             if (bTrace) {
                 Print("Prec neighs of new node: "); PrintNodeList(nodeNew.Get_nn_before());
-                Print("NC: "); PrintNodeList(setNC); 
+                Print("NC: "); PrintNodeList(setNC);
                 Print("NNC: "); PrintNodeList(setNNC);
-                Print("ANC: "); PrintNodeList(setANC);
             }
 
-            // Calculate the upper limit of approximate objects for m_k size
-            int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k));
-            // Calculate the amount of needed approximate objects to achieve k micro-cluster objects
-            int approxObjNeeded = m_k - setNC.size();
-            if (approxObjNeeded < 0) approxObjNeeded = 0;
-            
             // check if size of set NC big enough to create cluster
-            if (bTrace) Println("Check size of set NC"); 
+            if (bTrace) Println("Check size of set NC");
             if (setNC.size() >= m_theta * m_k) {
                 // DIAG ONLY -- DELETE
                 diagExactMCCount ++;
-                diagAdditionsToMC++;
 
                 // create new micro-cluster with center nodeNew
-                if (bTrace) Println("Create new micro-cluster"); 
+                if (bTrace) Println("Create new micro-cluster");
                 MicroCluster mcNew = new MicroCluster(nodeNew);
                 AddMicroCluster(mcNew);
-//                System.out.println("------ DIAG setMC after insertion: " + setMC.size());
                 nodeNew.mc = mcNew;
-                SetNodeType(nodeNew, NodeType.INLIER_MC);
-                
-                if (bTrace) Println("Add to new mc nodes within range R/2"); 
-                for (ISBNode q : setNC) {
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
-                    diagAdditionsToMC++;
-
-                    q.mc = mcNew;
-                    mcNew.AddNode(q);
-                    // move q from set PD to set inlier-mc
-                    SetNodeType(q, NodeType.INLIER_MC);
-                    ISB_PD.Remove(q);
-                    RemoveOutlier(q); // needed? ###
-                }
-                if (bTrace) { 
-                    Print("mcNew.nodes: "); PrintNodeList(mcNew.nodes); 
-                    PrintPD();
-                } 
-                
-                if (bTrace) Println("Update Rmc lists of nodes of PD in range 3R/2 from mcNew"); 
-                for (ISBNode q : setNNC) {
-                    q.Rmc.add(mcNew);
-                    if (bTrace) { Print(q.id + ".Rmc: "); PrintMCSet(q.Rmc); }
-                }
-            } else if (approxObjNeeded > 0 && approxObjNeeded <= approxObjLimit && setANC.size() >= approxObjNeeded) {
                 // DIAG ONLY -- DELETE
-                diagApproxMCCount ++;
                 diagAdditionsToMC++;
-
-                // create new approximate micro-cluster with center nodeNew
-                if (bTrace) Println("Create new approximate micro-cluster");
-                MicroCluster mcNew = new MicroCluster(nodeNew);
-                AddMicroCluster(mcNew);
-//                System.out.println("------ DIAG setMC after insertion: " + setMC.size());
-                nodeNew.mc = mcNew;
                 SetNodeType(nodeNew, NodeType.INLIER_MC);
 
-                // Add exact and approximate objects to the new approximate MC
                 if (bTrace) Println("Add to new mc nodes within range R/2");
                 for (ISBNode q : setNC) {
                     q.mc = mcNew;
+                    // DIAG ONLY -- DELETE
+                    diagAdditionsToMC++;
                     mcNew.AddNode(q);
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
                     // DIAG ONLY -- DELETE
                     diagPDListPopulation --;
-                    diagAdditionsToMC++;
                     RemoveOutlier(q); // needed? ###
-                }
-                if (bTrace) Println("Add to new mc nodes within the approximate query's range");
-                for (int i = 0 ; i < approxObjNeeded; i++) {
-                    ISBNode approxNode = setANC.get(i);
-                    approxNode.mc = mcNew;
-                    // move approxNode from set PD to set APPROX_INLIER_MC
-                    SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
-                    ISB_PD.Remove(approxNode);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
-                    diagAdditionsToMC++;
-                    RemoveOutlier(approxNode); // needed? ###
                 }
                 if (bTrace) {
                     Print("mcNew.nodes: "); PrintNodeList(mcNew.nodes);
@@ -384,6 +323,7 @@ public class MCOD extends MCODBase {
         }
     }
 
+
     void AddToEventQueue(ISBNode x, ISBNode nodeMinExp) {
         if (bTrace) Println("AddToEventQueue x.id: " + x.id); 
         if (nodeMinExp != null) {
@@ -441,33 +381,63 @@ public class MCOD extends MCODBase {
 
                 if (bTrace) Println("Check if mc has enough objects");
                 if (mc.GetNodesCount() < m_k) {
-                    // DIAG ONLY -- DELETE
-                    diagDiscardedMCCount ++;
+                    // Check if the MC's missing objects can be provided by approximate objects
 
-                    // remove micro-cluster mc
-                    if (bTrace) Println("Remove mc");
-                    RemoveMicroCluster(mc);
-//                    System.out.println("------ DIAG setMC after removal: " + setMC.size());
+                    // Calculate the upper limit of approximate objects for m_k size
+                    int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k)) - mc.approxNodeCount;
+                    // Calculate the amount of needed approximate objects to achieve k micro-cluster objects
+                    int approxObjNeeded = m_k - mc.GetNodesCount();
+                    // Check if the amount of needed approximate objects is equal or less than the limit
+                    boolean approxLimitOK = approxObjNeeded <= approxObjLimit;
+                    // Search for approximate objects in range ar = (R/2) + (m_arFactor * R) from MC's center.
+                    double ar = (m_radius / 2.0) + (m_arFactor * m_radius);
+                    Vector<ISBSearchResult> resultNodes;
+                    resultNodes = ISB_PD.RangeSearch(mc.mcc, ar);
+                    boolean approxObjFound = resultNodes.size() >= approxObjNeeded;
+                    // Check whether both approximation limit was satisfied and approximate objects in range were found
+                    if (approxLimitOK && approxObjFound) {
+                        // DIAG ONLY -- DELETE
+                        diagSustainedMCCount ++;
 
-                    // insert nodes of mc to set nodesReinsert
-                    nodesReinsert = new TreeSet<moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode>();
-                    for (ISBNode q : mc.nodes) {
-                        nodesReinsert.add(q);
-                    }
+                        if (bTrace) Println("Add new approximate nodes to micro-cluster");
+                        // Add the approximate nodes needed to the MC's nodes
+                        for (int i = 0; i < approxObjNeeded; i++) {
+                            ISBNode approxNode = resultNodes.get(i).node;
+                            // Update approxNode's MicroCluster
+                            approxNode.mc = mc;
+                            // move approxNode from set PD to set APPROX_INLIER_MC
+                            SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
+                            ISB_PD.Remove(approxNode);
+                            RemoveOutlier(approxNode); // needed? ###
+                            // Add approxNode to the MC
+                            mc.AddNode(approxNode);
+                        }
+                    } else {
+                        // DIAG ONLY -- DELETE
+                        diagDiscardedMCCount++;
 
-                    // treat each node of mc as new node
-                    for (ISBNode q : mc.nodes) {
-                        if (bTrace) Println("\nTreat as new node q: " + q.id);
-                        q.InitNode();
-                        ProcessNewNode(q, false);
+                        // remove micro-cluster mc
+                        if (bTrace) Println("Remove mc");
+                        RemoveMicroCluster(mc);
+
+                        // insert nodes of mc to set nodesReinsert
+                        nodesReinsert = new TreeSet<ISBNode>();
+                        for (ISBNode q : mc.nodes) {
+                            nodesReinsert.add(q);
+                        }
+
+                        // treat each node of mc as new node
+                        for (ISBNode q : mc.nodes) {
+                            if (bTrace) Println("\nTreat as new node q: " + q.id);
+                            q.InitNode();
+                            ProcessNewNode(q, false);
+                        }
                     }
                 }
             } else {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
-                // DIAG ONLY -- DELETE
-                diagPDListPopulation --;
             }
 
             RemoveNode(nodeExpired);
@@ -506,7 +476,6 @@ public class MCOD extends MCODBase {
         // DIAG ONLY -- DELETE
         System.out.println("---------------------- MCODmod1 ----------------------");
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
-        System.out.println("DIAG - Total Approx MCs count: " + diagApproxMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
         System.out.println("DIAG - #Times a point was added to an MC: " + diagAdditionsToMC);
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
