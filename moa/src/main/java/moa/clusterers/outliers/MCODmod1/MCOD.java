@@ -381,63 +381,32 @@ public class MCOD extends MCODBase {
 
                 if (bTrace) Println("Check if mc has enough objects");
                 if (mc.GetNodesCount() < m_k) {
-                    // Check if the MC's missing objects can be provided by approximate objects
+                    // DIAG ONLY -- DELETE
+                    diagDiscardedMCCount ++;
 
-                    // Calculate the upper limit of approximate objects for m_k size
-                    int approxObjLimit = Math.toIntExact(Math.round(m_mcApproxFactor * m_k)) - mc.approxNodeCount;
-                    // Calculate the amount of needed approximate objects to achieve k micro-cluster objects
-                    int approxObjNeeded = m_k - mc.GetNodesCount();
-                    // Check if the amount of needed approximate objects is equal or less than the limit
-                    boolean approxLimitOK = approxObjNeeded <= approxObjLimit;
-                    // Search for approximate objects in range ar = (R/2) + (m_arFactor * R) from MC's center.
-                    double ar = (m_radius / 2.0) + (m_arFactor * m_radius);
-                    Vector<ISBSearchResult> resultNodes;
-                    resultNodes = ISB_PD.RangeSearch(mc.mcc, ar);
-                    boolean approxObjFound = resultNodes.size() >= approxObjNeeded;
-                    // Check whether both approximation limit was satisfied and approximate objects in range were found
-                    if (approxLimitOK && approxObjFound) {
-                        // DIAG ONLY -- DELETE
-                        diagSustainedMCCount ++;
+                    // remove micro-cluster mc
+                    if (bTrace) Println("Remove mc");
+                    RemoveMicroCluster(mc);
 
-                        if (bTrace) Println("Add new approximate nodes to micro-cluster");
-                        // Add the approximate nodes needed to the MC's nodes
-                        for (int i = 0; i < approxObjNeeded; i++) {
-                            ISBNode approxNode = resultNodes.get(i).node;
-                            // Update approxNode's MicroCluster
-                            approxNode.mc = mc;
-                            // move approxNode from set PD to set APPROX_INLIER_MC
-                            SetNodeType(approxNode, NodeType.APPROX_INLIER_MC);
-                            ISB_PD.Remove(approxNode);
-                            RemoveOutlier(approxNode); // needed? ###
-                            // Add approxNode to the MC
-                            mc.AddNode(approxNode);
-                        }
-                    } else {
-                        // DIAG ONLY -- DELETE
-                        diagDiscardedMCCount++;
+                    // insert nodes of mc to set nodesReinsert
+                    nodesReinsert = new TreeSet<ISBNode>();
+                    for (ISBNode q : mc.nodes) {
+                        nodesReinsert.add(q);
+                    }
 
-                        // remove micro-cluster mc
-                        if (bTrace) Println("Remove mc");
-                        RemoveMicroCluster(mc);
-
-                        // insert nodes of mc to set nodesReinsert
-                        nodesReinsert = new TreeSet<ISBNode>();
-                        for (ISBNode q : mc.nodes) {
-                            nodesReinsert.add(q);
-                        }
-
-                        // treat each node of mc as new node
-                        for (ISBNode q : mc.nodes) {
-                            if (bTrace) Println("\nTreat as new node q: " + q.id);
-                            q.InitNode();
-                            ProcessNewNode(q, false);
-                        }
+                    // treat each node of mc as new node
+                    for (ISBNode q : mc.nodes) {
+                        if (bTrace) Println("\nTreat as new node q: " + q.id);
+                        q.InitNode();
+                        ProcessNewNode(q, false);
                     }
                 }
             } else {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
+                // DIAG ONLY -- DELETE
+                diagPDListPopulation --;
             }
 
             RemoveNode(nodeExpired);
