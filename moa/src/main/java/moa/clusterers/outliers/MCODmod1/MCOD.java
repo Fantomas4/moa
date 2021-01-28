@@ -52,8 +52,8 @@ public class MCOD extends MCODBase {
     int diagExactMCCount = 0;
     int diagApproxMCCount = 0;
     int diagDiscardedMCCount = 0;
-    int diagTotalActiveMCCount = 0;
-    int diagTotalPointsAddedToMC = 0;
+    int diagAdditionsToMC = 0;
+    int diagAdditionsToPD = 0;
     int diagPDListPopulation = 0;
 
     public MCOD()
@@ -174,8 +174,7 @@ public class MCOD extends MCODBase {
         if (bFoundMC) {
             if (bTrace) Println("Add new node to micro-cluster");
             // DIAG ONLY -- DELETE
-            diagTotalPointsAddedToMC ++;
-            diagTotalActiveMCCount ++;
+            diagAdditionsToMC++;
 
             nodeNew.mc = mcClosest;
             SetNodeType(nodeNew, NodeType.INLIER_MC);
@@ -257,29 +256,27 @@ public class MCOD extends MCODBase {
             if (setNC.size() >= m_theta * m_k) {
                 // DIAG ONLY -- DELETE
                 diagExactMCCount ++;
-                diagTotalActiveMCCount ++;
+                diagAdditionsToMC++;
 
                 // create new micro-cluster with center nodeNew
                 if (bTrace) Println("Create new micro-cluster"); 
                 MicroCluster mcNew = new MicroCluster(nodeNew);
                 AddMicroCluster(mcNew);
+//                System.out.println("------ DIAG setMC after insertion: " + setMC.size());
                 nodeNew.mc = mcNew;
-                // DIAG ONLY -- DELETE
-                diagTotalPointsAddedToMC ++;
                 SetNodeType(nodeNew, NodeType.INLIER_MC);
                 
                 if (bTrace) Println("Add to new mc nodes within range R/2"); 
                 for (ISBNode q : setNC) {
-                    q.mc = mcNew;
                     // DIAG ONLY -- DELETE
-                    diagTotalPointsAddedToMC ++;
+                    diagPDListPopulation --;
+                    diagAdditionsToMC++;
+
+                    q.mc = mcNew;
                     mcNew.AddNode(q);
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
-                    diagTotalPointsAddedToMC ++;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) { 
@@ -295,12 +292,13 @@ public class MCOD extends MCODBase {
             } else if (approxObjNeeded > 0 && approxObjNeeded <= approxObjLimit && setANC.size() >= approxObjNeeded) {
                 // DIAG ONLY -- DELETE
                 diagApproxMCCount ++;
-                diagTotalActiveMCCount ++;
+                diagAdditionsToMC++;
 
-                // create new micro-cluster with center nodeNew
+                // create new approximate micro-cluster with center nodeNew
                 if (bTrace) Println("Create new approximate micro-cluster");
                 MicroCluster mcNew = new MicroCluster(nodeNew);
                 AddMicroCluster(mcNew);
+//                System.out.println("------ DIAG setMC after insertion: " + setMC.size());
                 nodeNew.mc = mcNew;
                 SetNodeType(nodeNew, NodeType.INLIER_MC);
 
@@ -314,7 +312,7 @@ public class MCOD extends MCODBase {
                     ISB_PD.Remove(q);
                     // DIAG ONLY -- DELETE
                     diagPDListPopulation --;
-                    diagTotalPointsAddedToMC ++;
+                    diagAdditionsToMC++;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) Println("Add to new mc nodes within the approximate query's range");
@@ -326,7 +324,7 @@ public class MCOD extends MCODBase {
                     ISB_PD.Remove(approxNode);
                     // DIAG ONLY -- DELETE
                     diagPDListPopulation --;
-                    diagTotalPointsAddedToMC ++;
+                    diagAdditionsToMC++;
                     RemoveOutlier(approxNode); // needed? ###
                 }
                 if (bTrace) {
@@ -358,6 +356,8 @@ public class MCOD extends MCODBase {
                 ISB_PD.Insert(nodeNew);
                 // DIAG ONLY -- DELETE
                 diagPDListPopulation ++;
+                diagAdditionsToPD++;
+
                 if (bTrace) PrintPD();
 
                 // check if nodeNew is an inlier or outlier
@@ -430,10 +430,10 @@ public class MCOD extends MCODBase {
         }
     }
 
-    void ProcessExpiredNode(moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode nodeExpired) {
+    void ProcessExpiredNode(ISBNode nodeExpired) {
         if (nodeExpired != null) {
             if (bTrace) Println("\nnodeExpired: " + nodeExpired.id);
-            moa.clusterers.outliers.MCODmod1.MicroCluster mc = nodeExpired.mc;
+            MicroCluster mc = nodeExpired.mc;
             if (mc != null) {
                 if (bTrace) Println("nodeExpired belongs to mc: " + mc.mcc.id);
                 mc.RemoveNode(nodeExpired);
@@ -443,20 +443,20 @@ public class MCOD extends MCODBase {
                 if (mc.GetNodesCount() < m_k) {
                     // DIAG ONLY -- DELETE
                     diagDiscardedMCCount ++;
-                    diagTotalActiveMCCount --;
 
                     // remove micro-cluster mc
                     if (bTrace) Println("Remove mc");
                     RemoveMicroCluster(mc);
+//                    System.out.println("------ DIAG setMC after removal: " + setMC.size());
 
                     // insert nodes of mc to set nodesReinsert
                     nodesReinsert = new TreeSet<moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode>();
-                    for (moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode q : mc.nodes) {
+                    for (ISBNode q : mc.nodes) {
                         nodesReinsert.add(q);
                     }
 
                     // treat each node of mc as new node
-                    for (moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode q : mc.nodes) {
+                    for (ISBNode q : mc.nodes) {
                         if (bTrace) Println("\nTreat as new node q: " + q.id);
                         q.InitNode();
                         ProcessNewNode(q, false);
@@ -508,8 +508,9 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Approx MCs count: " + diagApproxMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
-        System.out.println("DIAG - Total Points added to MCs: " + diagTotalPointsAddedToMC);
-        System.out.println("DIAG - Total -ACTIVE- MCs: " + diagTotalActiveMCCount);
+        System.out.println("DIAG - #Times a point was added to an MC: " + diagAdditionsToMC);
+        System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
+        System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
         System.out.println("-------------------------------------------------------");
     }
