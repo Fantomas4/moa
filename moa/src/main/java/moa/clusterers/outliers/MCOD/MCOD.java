@@ -47,6 +47,7 @@ public class MCOD extends MCODBase {
     int diagAdditionsToMC = 0;
     int diagAdditionsToPD = 0;
     int diagPDListPopulation = 0;
+    int diagSafeInliersCount = 0;
 
     public MCOD()
     {
@@ -327,6 +328,9 @@ public class MCOD extends MCODBase {
     }
     
     void ProcessEventQueue(ISBNode nodeExpired) {
+        // DIAG ONLY -- DELETE
+        diagSafeInliersCount = 0;
+
         EventItem e = eventQueue.FindMin();
         while ((e != null) && (e.timeStamp <= GetWindowEnd())) {
             e = eventQueue.ExtractMin();
@@ -345,6 +349,9 @@ public class MCOD extends MCODBase {
                     SaveOutlier(x);
                 } else {
                     if (bTrace) Println("x is an inlier, add to event queue");
+                    // DIAG ONLY -- DELETE
+                    if (x.count_after >= m_k) diagSafeInliersCount++;
+
                     // get oldest preceding neighbor of x
                     ISBNode nodeMinExp = x.GetMinPrecNeigh(GetWindowStart());
                     // add x to event queue
@@ -435,6 +442,7 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
         System.out.println("DIAG - #Times a point was added to an MC: " + diagAdditionsToMC);
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
+        System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
         System.out.println("-------------------------------------------------------");
