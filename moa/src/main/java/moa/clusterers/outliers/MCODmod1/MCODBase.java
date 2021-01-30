@@ -99,8 +99,7 @@ public abstract class MCODBase extends MyBaseOutlierDetector {
     protected int m_WindowSize;
     protected double m_radius;
     protected int m_k;
-    protected double m_arFactor;
-    protected double m_mcApproxFactor;
+    protected double m_ar;
     protected double m_theta = 1.0;
             
     public boolean bWarning = false;

@@ -27,7 +27,7 @@ import java.util.*;
 
 public class ISBIndex {
     public static class ISBNode implements Comparable<ISBNode> {
-        public static enum NodeType { OUTLIER, INLIER_MC, APPROX_INLIER_MC, INLIER_PD }
+        public static enum NodeType { OUTLIER, INLIER_MC, INLIER_PD }
         
         public Instance inst;
         public StreamObj obj;

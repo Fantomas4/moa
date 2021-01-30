@@ -23,13 +23,12 @@ package moa.clusterers.outliers.MCODmod1;
 import com.github.javacliparser.FloatOption;
 import com.github.javacliparser.IntOption;
 import com.yahoo.labs.samoa.instances.Instance;
+import moa.clusterers.outliers.Angiulli.ApproxSTORM;
 import moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode;
 import moa.clusterers.outliers.MCODmod1.ISBIndex.ISBNode.NodeType;
 import moa.clusterers.outliers.MCODmod1.ISBIndex.ISBSearchResult;
 
-import java.util.ArrayList;
-import java.util.TreeSet;
-import java.util.Vector;
+import java.util.*;
 
 
 //The algorithm is described in 
@@ -41,12 +40,16 @@ import java.util.Vector;
 public class MCOD extends MCODBase {
     public FloatOption radiusOption = new FloatOption("radius", 'r', "Search radius.", 0.1);
     public IntOption kOption = new IntOption("k", 't', "Parameter k.", 50);
+//    public FloatOption pOption = new FloatOption("p", 'p', "Parameter p.", 0.1);
+    public IntOption pdLimitOption = new IntOption("PDLimit", 'l', "The maximum size of PD List before approximation occurs.", 3000);
     public FloatOption arFactorOption = new FloatOption("ApproximationRadiusFactor", 'b',
-            "A factor b that determines the search radius relevant to R/2 for an MC's approximate neighbors (ar = R/2 + b * R/2",
+            "A factor b that determines the search radius relevant to R/2 for an MC's approximate neighbors (ar = R/2 + b * R)",
             0.5);
-    public FloatOption mcApproxFactor = new FloatOption("MCApproximationFactor", 'c',
-            "A factor c that determines the maximum amount of approximate nodes that can be included in a viable MC (apprNodeNumber = c * mcSize ",
-            0.2);
+
+    Set<ISBNode> pdSafeInliers; // list of safe inliers
+//    int m_FractWindowSize;
+    int m_pdLimit;
+    Random m_Random;
 
     // DIAG ONLY -- DELETE
     int diagExactMCCount = 0;
@@ -69,15 +72,20 @@ public class MCOD extends MCODBase {
         m_WindowSize = windowSizeOption.getValue();
         m_radius = radiusOption.getValue();
         m_k = kOption.getValue();
-        m_arFactor = arFactorOption.getValue();
-        m_mcApproxFactor = mcApproxFactor.getValue();
-                
+        m_pdLimit = pdLimitOption.getValue();
+        m_ar = (m_radius / 2.0) + arFactorOption.getValue() * m_radius;
+//        m_FractWindowSize = (int) (pOption.getValue() * m_WindowSize);
+
+        m_Random = new Random();
+
         Println("Init MCODmod1:");
         Println("   window_size: " + m_WindowSize);
         Println("   radius: " + m_radius);
         Println("   k: " + m_k);
-        Println("   ApproximationRadiusFactor: " + m_arFactor);
-        Println("   MCApproximationFactor: " + m_mcApproxFactor);
+        Println("   PD Size Limit: " + m_pdLimit);
+//        Println("   p: " + pOption.getValue());
+//        Println("   ApproximationRadiusFactor: " + m_arFactor);
+
         
         //bTrace = true;
         //bWarning = true;
@@ -87,6 +95,8 @@ public class MCOD extends MCODBase {
         windowNodes = new Vector<ISBNode>();
         // create ISB
         ISB_PD = new ISBIndex(m_radius, m_k);
+        // create PD's safe inliers set
+        pdSafeInliers = new HashSet<ISBNode>();
         // create helper sets for micro-cluster management
         setMC = new TreeSet<MicroCluster>();
         // micro-cluster index
@@ -98,6 +108,20 @@ public class MCOD extends MCODBase {
         m_nBothInlierOutlier = 0;
         m_nOnlyInlier = 0;
         m_nOnlyOutlier = 0;
+    }
+
+    boolean IsSafeInlier(ISBNode node) {
+        return node.count_after >= m_k;
+    }
+
+    ISBNode GetSafeInlier(int idx) {
+        ISBNode node = null;
+        Iterator it = pdSafeInliers.iterator();
+        while (idx >= 0) {
+            node = (ISBNode)it.next();
+            idx--;
+        }
+        return node;
     }
     
     void SetNodeType(ISBNode node, NodeType type) {
@@ -190,10 +214,14 @@ public class MCOD extends MCODBase {
                         if (bNewNode) {
                             // update q.count_after and its' outlierness
                             AddNeighbor(q, nodeNew, true);
+                            // Add q to PD's safe inlier set if it is a safe inlier
+                            if (IsSafeInlier(q)) pdSafeInliers.add(q);
                         } else {
                             if (nodesReinsert.contains(q)) {
                                 // update q.count_after or q.nn_before and its' outlierness
                                 AddNeighbor(q, nodeNew, true);
+                                // Add q to PD's safe inlier set if it is a safe inlier
+                                if (IsSafeInlier(q)) pdSafeInliers.add(q);
                             }
                         }
                     }
@@ -201,6 +229,33 @@ public class MCOD extends MCODBase {
             }
         }
         else {
+//            // Check PD safe inliers set's size to determine if a random safe inlier must be removed
+//            int nSafeInliers = pdSafeInliers.size();
+//            if (nSafeInliers > m_FractWindowSize) {
+//                int idx = m_Random.nextInt(nSafeInliers);
+//                ISBNode si = GetSafeInlier(idx);
+//                // Remove the selected safe inlier from the PD's ISB
+//                ISB_PD.Remove(si);
+//                // Remove the selected safe inlier from the PD's safe inlier set
+//                pdSafeInliers.remove(si);
+//            }
+
+            // Check ISB_PD's size to determine if a random safe inlier must be removed
+            boolean safeInlierDeleted = false;
+            int nSafeInliers = pdSafeInliers.size();
+            while (diagPDListPopulation > m_pdLimit && nSafeInliers > 0) {
+                int idx = m_Random.nextInt(nSafeInliers);
+                ISBNode si = GetSafeInlier(idx);
+                // Remove the selected safe inlier from the PD's ISB
+                ISB_PD.Remove(si);
+                // Remove the selected safe inlier from the PD's safe inlier set
+                pdSafeInliers.remove(si);
+                // Update the value of the deletion flag
+                safeInlierDeleted = true;
+                // Update safe inliers counter
+                nSafeInliers = pdSafeInliers.size();
+            }
+
             // No close enough micro-cluster found.
             // Perform 3R/2 range query to nodes in set PD.
 
@@ -209,6 +264,7 @@ public class MCOD extends MCODBase {
             // create helper sets for micro-cluster management
             ArrayList<ISBNode> setNC = new ArrayList<ISBNode>();
             ArrayList<ISBNode> setNNC = new ArrayList<ISBNode>();
+            ArrayList<ISBNode> setANC = new ArrayList<ISBNode>();
             Vector<ISBSearchResult> resultNodes;
             resultNodes = ISB_PD.RangeSearch(nodeNew, 1.5 * m_radius); // 1.5 ###
             for (ISBSearchResult sr : resultNodes) {
@@ -219,29 +275,47 @@ public class MCOD extends MCODBase {
                     if (bNewNode) {
                         // update q.count_after and its' outlierness
                         AddNeighbor(q, nodeNew, true);
+                        // Add q to PD's safe inlier set if it is a safe inlier
+                        if (IsSafeInlier(q)) pdSafeInliers.add(q);
                     } else {
                         if (nodesReinsert.contains(q)) {
                             // update q.count_after or q.nn_before and its' outlierness
                             AddNeighbor(q, nodeNew, true);
+                            // Add q to PD's safe inlier set if it is a safe inlier
+                            if (IsSafeInlier(q)) pdSafeInliers.add(q);
                         }
                     }
                 }
+
+                // Determine the radius limit to be used based on whether a safe inlier was deleted
+                double distLimit = safeInlierDeleted ? m_ar : m_radius / 2.0;
 
                 if (sr.distance <= m_radius / 2.0) {
                     setNC.add(q);
                 } else {
                     setNNC.add(q);
+                    if (safeInlierDeleted && sr.distance <= m_ar) {
+                        setANC.add(q);
+                    }
                 }
             }
             if (bTrace) {
                 Print("Prec neighs of new node: "); PrintNodeList(nodeNew.Get_nn_before());
                 Print("NC: "); PrintNodeList(setNC);
                 Print("NNC: "); PrintNodeList(setNNC);
+                if (safeInlierDeleted) Print("ANC: "); PrintNodeList(setANC);
             }
 
-            // check if size of set NC big enough to create cluster
-            if (bTrace) Println("Check size of set NC");
-            if (setNC.size() >= m_theta * m_k) {
+            // check if the number of objects found is big enough to create a cluster
+            int nCollectedObjects;
+            if (safeInlierDeleted) {
+                if (bTrace) Println("Check size of sets NC and ANC");
+                nCollectedObjects = setNC.size() + setANC.size();
+            } else {
+                if (bTrace) Println("Check size of set NC");
+                nCollectedObjects = setNC.size();
+            }
+            if (nCollectedObjects >= m_theta * m_k) {
                 // DIAG ONLY -- DELETE
                 diagExactMCCount ++;
 
@@ -263,10 +337,28 @@ public class MCOD extends MCODBase {
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
+                    // If q is a safe inlier, also remove it from the PD's safe inlier set.
+                    if (IsSafeInlier(q)) pdSafeInliers.remove(q);
                     // DIAG ONLY -- DELETE
                     diagPDListPopulation --;
                     RemoveOutlier(q); // needed? ###
                 }
+                if (bTrace) Println("Add to new mc nodes within range ar");
+                for (ISBNode q : setANC) {
+                    q.mc = mcNew;
+                    // DIAG ONLY -- DELETE
+                    diagAdditionsToMC++;
+                    mcNew.AddNode(q);
+                    // move q from set PD to set inlier-mc
+                    SetNodeType(q, NodeType.INLIER_MC);
+                    ISB_PD.Remove(q);
+                    // If q is a safe inlier, also remove it from the PD's safe inlier set.
+                    if (IsSafeInlier(q)) pdSafeInliers.remove(q);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation --;
+                    RemoveOutlier(q); // needed? ###
+                }
+
                 if (bTrace) {
                     Print("mcNew.nodes: "); PrintNodeList(mcNew.nodes);
                     PrintPD();
@@ -412,6 +504,8 @@ public class MCOD extends MCODBase {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
+                // If nodeExpired is a safe inlier, also remove it from PD's safe inlier set
+                if (IsSafeInlier(nodeExpired)) pdSafeInliers.remove(nodeExpired);
                 // DIAG ONLY -- DELETE
                 diagPDListPopulation --;
             }
@@ -453,12 +547,13 @@ public class MCOD extends MCODBase {
         System.out.println("---------------------- MCODmod1 ----------------------");
         System.out.println("DIAG - Total Exact MCs count: " + diagExactMCCount);
         System.out.println("DIAG - Total Discarded MCs: " + diagDiscardedMCCount);
-        System.out.println("DIAG - #Times an MC was sustained: " + diagSustainedMCCount);
+//        System.out.println("DIAG - #Times an MC was sustained: " + diagSustainedMCCount);
         System.out.println("DIAG - #Times a point was added to an MC: " + diagAdditionsToMC);
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
-        System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
+//        System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
+        System.out.println("DIAG - Total -ACTIVE- PD's Safe Inliers List Population: " + pdSafeInliers.size());
         System.out.println("-------------------------------------------------------");
     }
 }
