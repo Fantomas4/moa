@@ -229,17 +229,6 @@ public class MCOD extends MCODBase {
             }
         }
         else {
-//            // Check PD safe inliers set's size to determine if a random safe inlier must be removed
-//            int nSafeInliers = pdSafeInliers.size();
-//            if (nSafeInliers > m_FractWindowSize) {
-//                int idx = m_Random.nextInt(nSafeInliers);
-//                ISBNode si = GetSafeInlier(idx);
-//                // Remove the selected safe inlier from the PD's ISB
-//                ISB_PD.Remove(si);
-//                // Remove the selected safe inlier from the PD's safe inlier set
-//                pdSafeInliers.remove(si);
-//            }
-
             // Check ISB_PD's size to determine if a random safe inlier must be removed
             boolean safeInlierDeleted = false;
             int nSafeInliers = pdSafeInliers.size();
@@ -286,9 +275,6 @@ public class MCOD extends MCODBase {
                         }
                     }
                 }
-
-                // Determine the radius limit to be used based on whether a safe inlier was deleted
-                double distLimit = safeInlierDeleted ? m_ar : m_radius / 2.0;
 
                 if (sr.distance <= m_radius / 2.0) {
                     setNC.add(q);
@@ -552,8 +538,9 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
 //        System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
         System.out.println("DIAG - Total -ACTIVE- PD's Safe Inliers List Population: " + pdSafeInliers.size());
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
+        System.out.println("DIAG - Process time (until now): " + nTotalRunTime / 1000.0);
         System.out.println("-------------------------------------------------------");
     }
 }
