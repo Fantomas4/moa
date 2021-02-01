@@ -149,17 +149,20 @@ public class ISBIndex {
     Map<Integer, Set<ISBNode>> mapNodes;
     double m_radius;
     int m_k; // k nearest neighbors
-    int nObjects; // The number of objects ISBIndex currently contains.
 
     public ISBIndex(double radius, int k) {
         mtree = new MTreeStreamObjects();
         mapNodes = new HashMap<Integer, Set<ISBNode>>();
         m_radius = radius;
         m_k = k;
-        nObjects = 0;
     }
 
     public int GetSize() {
+        int nObjects = 0;
+        for (Set<ISBNode> setNodes : mapNodes.values()) {
+            nObjects += setNodes.size();
+        }
+
         return nObjects;
     }
 
@@ -209,15 +212,11 @@ public class ISBIndex {
         mtree.add(node.obj);
         // insert node at map
         MapInsert(node);
-        // increment object count
-        nObjects++;
     }
     
     public void Remove(ISBNode node) {
         // remove from map
         MapDelete(node);
-        // decrement object count
-        nObjects--;
         // check if stream object at mtree is still being referenced
         if (MapCountObjRefs(node.obj) <= 0) {
             // delete stream object from mtree
