@@ -20,9 +20,18 @@
 
 package moa.clusterers.outliers.MCODmod1;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.Vector;
 import com.yahoo.labs.samoa.instances.Instance;
 
-import java.util.*;
 
 
 public class ISBIndex {
@@ -140,16 +149,18 @@ public class ISBIndex {
     Map<Integer, Set<ISBNode>> mapNodes;
     double m_radius;
     int m_k; // k nearest neighbors
+    int nObjects; // The number of objects ISBIndex currently contains.
     
     public ISBIndex(double radius, int k) {
         mtree = new MTreeStreamObjects();
         mapNodes = new HashMap<Integer, Set<ISBNode>>();
         m_radius = radius;
         m_k = k;
+        nObjects = 0;
     }
 
-    public int GetMapSize() {
-        return mapNodes.size();
+    public int GetSize() {
+        return nObjects;
     }
     
     Vector<ISBNode> GetAllNodes() {
@@ -197,12 +208,16 @@ public class ISBIndex {
         // insert object of node at mtree
         mtree.add(node.obj);
         // insert node at map
-        MapInsert(node);    
+        MapInsert(node);
+        // increment object count
+        nObjects++;
     }
     
     public void Remove(ISBNode node) {
         // remove from map
         MapDelete(node);
+        // decrement object count
+        nObjects--;
         // check if stream object at mtree is still being referenced
         if (MapCountObjRefs(node.obj) <= 0) {
             // delete stream object from mtree

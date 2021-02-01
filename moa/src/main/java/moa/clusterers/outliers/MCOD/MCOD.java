@@ -437,7 +437,7 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
         System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.GetMapSize());
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.GetSize());
         System.out.println("DIAG - Process time (until now): " + nTotalRunTime / 1000.0);
         System.out.println("-------------------------------------------------------");
     }
