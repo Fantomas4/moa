@@ -148,8 +148,7 @@ public class ISBIndex {
         m_k = k;
     }
 
-    // DIAG ONLY -- DELETE
-    public int getMapSize() {
+    public int GetMapSize() {
         return mapNodes.size();
     }
     

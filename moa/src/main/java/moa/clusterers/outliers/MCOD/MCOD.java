@@ -46,7 +46,6 @@ public class MCOD extends MCODBase {
     int diagDiscardedMCCount = 0;
     int diagAdditionsToMC = 0;
     int diagAdditionsToPD = 0;
-    int diagPDListPopulation = 0;
     int diagSafeInliersCount = 0;
 
     public MCOD()
@@ -251,8 +250,6 @@ public class MCOD extends MCODBase {
                     // move q from set PD to set inlier-mc
                     SetNodeType(q, NodeType.INLIER_MC);
                     ISB_PD.Remove(q);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) { 
@@ -282,8 +279,6 @@ public class MCOD extends MCODBase {
                 
                 if (bTrace) Println("Insert nodeNew to index of nodes of PD"); 
                 ISB_PD.Insert(nodeNew);
-                // DIAG ONLY -- DELETE
-                diagPDListPopulation ++;
                 diagAdditionsToPD++;
 
                 if (bTrace) PrintPD();
@@ -399,8 +394,6 @@ public class MCOD extends MCODBase {
                 // nodeExpired belongs to set PD
                 // remove nodeExpired from PD index
                 ISB_PD.Remove(nodeExpired);
-                // DIAG ONLY -- DELETE
-                diagPDListPopulation --;
             }
             
             RemoveNode(nodeExpired);
@@ -444,7 +437,7 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - #Times a point was added to PD: " + diagAdditionsToPD);
         System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.GetMapSize());
         System.out.println("DIAG - Process time (until now): " + nTotalRunTime / 1000.0);
         System.out.println("-------------------------------------------------------");
     }

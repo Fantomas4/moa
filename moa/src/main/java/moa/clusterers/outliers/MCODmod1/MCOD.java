@@ -57,7 +57,6 @@ public class MCOD extends MCODBase {
     int diagDiscardedMCCount = 0;
     int diagAdditionsToMC = 0;
     int diagAdditionsToPD = 0;
-    int diagPDListPopulation = 0;
     int diagSafeInliersCount = 0;
 
     public MCOD()
@@ -232,7 +231,7 @@ public class MCOD extends MCODBase {
             // Check ISB_PD's size to determine if a random safe inlier must be removed
             boolean safeInlierDeleted = false;
             int nSafeInliers = pdSafeInliers.size();
-            while (diagPDListPopulation > m_pdLimit && nSafeInliers > 0) {
+            while (ISB_PD.GetMapSize() > m_pdLimit && nSafeInliers > 0) {
                 int idx = m_Random.nextInt(nSafeInliers);
                 ISBNode si = GetSafeInlier(idx);
                 // Remove the selected safe inlier from the PD's ISB
@@ -325,8 +324,6 @@ public class MCOD extends MCODBase {
                     ISB_PD.Remove(q);
                     // If q is a safe inlier, also remove it from the PD's safe inlier set.
                     if (IsSafeInlier(q)) pdSafeInliers.remove(q);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
                     RemoveOutlier(q); // needed? ###
                 }
                 if (bTrace) Println("Add to new mc nodes within range ar");
@@ -340,8 +337,6 @@ public class MCOD extends MCODBase {
                     ISB_PD.Remove(q);
                     // If q is a safe inlier, also remove it from the PD's safe inlier set.
                     if (IsSafeInlier(q)) pdSafeInliers.remove(q);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation --;
                     RemoveOutlier(q); // needed? ###
                 }
 
@@ -387,11 +382,9 @@ public class MCOD extends MCODBase {
 
                 // If nodeNew is not a safe inlier, add it to PD
                 // If nodeNew is a safe inlier, add it to PD only if PD size limit has not been reached.
-                if (!IsSafeInlier(nodeNew) || (IsSafeInlier(nodeNew) && diagPDListPopulation < m_pdLimit)) {
+                if (!IsSafeInlier(nodeNew) || (IsSafeInlier(nodeNew) && ISB_PD.GetMapSize() < m_pdLimit)) {
                     if (bTrace) Println("Insert nodeNew to index of nodes of PD");
                     ISB_PD.Insert(nodeNew);
-                    // DIAG ONLY -- DELETE
-                    diagPDListPopulation ++;
                     diagAdditionsToPD++;
 
                     if (bTrace) PrintPD();
@@ -496,8 +489,6 @@ public class MCOD extends MCODBase {
                 ISB_PD.Remove(nodeExpired);
                 // If nodeExpired is a safe inlier, also remove it from PD's safe inlier set
                 if (IsSafeInlier(nodeExpired)) pdSafeInliers.remove(nodeExpired);
-                // DIAG ONLY -- DELETE
-                diagPDListPopulation --;
             }
 
             RemoveNode(nodeExpired);
@@ -543,7 +534,7 @@ public class MCOD extends MCODBase {
 //        System.out.println("DIAG - #Safe inliers detected: " + diagSafeInliersCount);
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
         System.out.println("DIAG - Total -ACTIVE- PD's Safe Inliers List Population: " + pdSafeInliers.size());
-        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + diagPDListPopulation);
+        System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.GetMapSize());
         System.out.println("DIAG - Process time (until now): " + nTotalRunTime / 1000.0);
         System.out.println("-------------------------------------------------------");
     }

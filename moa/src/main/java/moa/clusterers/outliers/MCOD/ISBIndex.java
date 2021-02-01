@@ -161,7 +161,11 @@ public class ISBIndex {
         m_radius = radius;
         m_k = k;
     }
-    
+
+    public int GetMapSize() {
+        return mapNodes.size();
+    }
+
     Vector<ISBNode> GetAllNodes() {
         Vector<ISBNode> v = new Vector<ISBNode>(); 
         Iterator it = mapNodes.entrySet().iterator();
