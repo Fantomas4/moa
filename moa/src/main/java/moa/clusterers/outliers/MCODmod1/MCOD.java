@@ -370,34 +370,38 @@ public class MCOD extends MCODBase {
                     Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before());
                 }
 
-                if (bTrace) Println("Insert nodeNew to index of nodes of PD");
-                ISB_PD.Insert(nodeNew);
-                // DIAG ONLY -- DELETE
-                diagPDListPopulation ++;
-                diagAdditionsToPD++;
+                // If nodeNew is not a safe inlier, add it to PD
+                // If nodeNew is a safe inlier, add it to PD only if PD size limit has not been reached.
+                if (!IsSafeInlier(nodeNew) || (IsSafeInlier(nodeNew) && diagPDListPopulation < m_pdLimit)) {
+                    if (bTrace) Println("Insert nodeNew to index of nodes of PD");
+                    ISB_PD.Insert(nodeNew);
+                    // DIAG ONLY -- DELETE
+                    diagPDListPopulation ++;
+                    diagAdditionsToPD++;
 
-                if (bTrace) PrintPD();
+                    if (bTrace) PrintPD();
 
-                // check if nodeNew is an inlier or outlier
-                // use both nn_before and count_after for case bNewNode=false
-                int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
-                if (count >= m_k) {
-                    if (bTrace) Println("nodeNew is an inlier");
-                    SetNodeType(nodeNew, NodeType.INLIER_PD);
-                    // insert nodeNew to event queue
-                    ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
-                    AddToEventQueue(nodeNew, nodeMinExp);
-                } else {
-                    if (bTrace) Println("nodeNew is an outlier");
-                    SetNodeType(nodeNew, NodeType.OUTLIER);
-                    SaveOutlier(nodeNew);
+                    // check if nodeNew is an inlier or outlier
+                    // use both nn_before and count_after for case bNewNode=false
+                    int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
+                    if (count >= m_k) {
+                        if (bTrace) Println("nodeNew is an inlier");
+                        SetNodeType(nodeNew, NodeType.INLIER_PD);
+                        // insert nodeNew to event queue
+                        ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
+                        AddToEventQueue(nodeNew, nodeMinExp);
+                    } else {
+                        if (bTrace) Println("nodeNew is an outlier");
+                        SetNodeType(nodeNew, NodeType.OUTLIER);
+                        SaveOutlier(nodeNew);
+                    }
+
+                    if (bTrace) Println("Update nodeNew.Rmc");
+                    for (SearchResultMC sr : resultsMC) {
+                        nodeNew.Rmc.add(sr.mc);
+                    }
+                    if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); }
                 }
-
-                if (bTrace) Println("Update nodeNew.Rmc");
-                for (SearchResultMC sr : resultsMC) {
-                    nodeNew.Rmc.add(sr.mc);
-                }
-                if (bTrace) { Print("nodeNew.Rmc: "); PrintMCSet(nodeNew.Rmc); }
             }
         }
     }
