@@ -370,6 +370,21 @@ public class MCOD extends MCODBase {
                     Print("nodeNew.nn_before: "); PrintNodeList(nodeNew.Get_nn_before());
                 }
 
+                // check if nodeNew is an inlier or outlier
+                // use both nn_before and count_after for case bNewNode=false
+                int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
+                if (count >= m_k) {
+                    if (bTrace) Println("nodeNew is an inlier");
+                    SetNodeType(nodeNew, NodeType.INLIER_PD);
+                    // insert nodeNew to event queue
+                    ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
+                    AddToEventQueue(nodeNew, nodeMinExp);
+                } else {
+                    if (bTrace) Println("nodeNew is an outlier");
+                    SetNodeType(nodeNew, NodeType.OUTLIER);
+                    SaveOutlier(nodeNew);
+                }
+
                 // If nodeNew is not a safe inlier, add it to PD
                 // If nodeNew is a safe inlier, add it to PD only if PD size limit has not been reached.
                 if (!IsSafeInlier(nodeNew) || (IsSafeInlier(nodeNew) && diagPDListPopulation < m_pdLimit)) {
@@ -380,21 +395,6 @@ public class MCOD extends MCODBase {
                     diagAdditionsToPD++;
 
                     if (bTrace) PrintPD();
-
-                    // check if nodeNew is an inlier or outlier
-                    // use both nn_before and count_after for case bNewNode=false
-                    int count = nodeNew.CountPrecNeighs(GetWindowStart()) + nodeNew.count_after;
-                    if (count >= m_k) {
-                        if (bTrace) Println("nodeNew is an inlier");
-                        SetNodeType(nodeNew, NodeType.INLIER_PD);
-                        // insert nodeNew to event queue
-                        ISBNode nodeMinExp = nodeNew.GetMinPrecNeigh(GetWindowStart());
-                        AddToEventQueue(nodeNew, nodeMinExp);
-                    } else {
-                        if (bTrace) Println("nodeNew is an outlier");
-                        SetNodeType(nodeNew, NodeType.OUTLIER);
-                        SaveOutlier(nodeNew);
-                    }
 
                     if (bTrace) Println("Update nodeNew.Rmc");
                     for (SearchResultMC sr : resultsMC) {
