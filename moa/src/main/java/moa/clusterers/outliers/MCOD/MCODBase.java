@@ -256,9 +256,9 @@ public abstract class MCODBase extends MyBaseOutlierDetector {
     void RemoveNode(ISBNode node) {
         windowNodes.remove(node);
 //        RemoveExpiredOutlier(new Outlier(node.inst, node.id, node)); // ### remove when expired?
-        evaluateAsOutlier(node);
         // update statistics
         UpdateStatistics(node);
+        evaluateAsOutlier(node);
     }
     
     void UpdateStatistics(ISBNode node) {
