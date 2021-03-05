@@ -210,12 +210,12 @@ public abstract class MCODBase extends MyBaseOutlierDetector {
     }
     
     void SaveOutlier(ISBNode node) {
-        AddOutlier(new Outlier(node.inst, node.id, node));
+//        AddOutlier(new Outlier(node.inst, node.id, node));
         node.nOutlier++; // update statistics
     }
     
     void RemoveOutlier(ISBNode node) {
-        RemoveOutlier(new Outlier(node.inst, node.id, node));
+//        RemoveOutlier(new Outlier(node.inst, node.id, node));
         node.nInlier++; // update statistics
     }
     
@@ -235,7 +235,8 @@ public abstract class MCODBase extends MyBaseOutlierDetector {
     
     void RemoveNode(ISBNode node) {
         windowNodes.remove(node);
-        RemoveExpiredOutlier(new Outlier(node.inst, node.id, node)); // ### remove when expired?
+//        RemoveExpiredOutlier(new Outlier(node.inst, node.id, node)); // ### remove when expired?
+        evaluateAsOutlier(node);
         // update statistics
         UpdateStatistics(node);
     }

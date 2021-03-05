@@ -31,6 +31,7 @@ import moa.cluster.Cluster;
 import moa.cluster.Clustering;
 import moa.cluster.SphereCluster;
 import moa.clusterers.AbstractClusterer;
+import moa.clusterers.outliers.MCOD.ISBIndex;
 import moa.core.Measurement;
 import com.github.javacliparser.IntOption;
 import com.yahoo.labs.samoa.instances.Instance;
@@ -93,7 +94,18 @@ public abstract class MyBaseOutlierDetector extends AbstractClusterer {
         int x = GetMemoryUsage();
         if (iMaxMemUsage < x) iMaxMemUsage = x;
     }
-    
+
+    public void evaluateAsOutlier(ISBIndex.ISBNode node) {
+        if (node.nOutlier > 0 && node.nInlier == 0) {
+            // node is a pure outlier, so we record it
+            recordOutlier(new Outlier(node.inst, node.id, node));
+        }
+    }
+
+    private void recordOutlier(Outlier newOutlier) {
+        outliersFound.add(newOutlier);
+    }
+
     public double getTimePerObj() {
         return nTimePerObj;
     }

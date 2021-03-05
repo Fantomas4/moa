@@ -439,6 +439,7 @@ public class MCOD extends MCODBase {
         System.out.println("DIAG - Total -ACTIVE- MCs: " + setMC.size());
         System.out.println("DIAG - Total -ACTIVE- PD List Population: " + ISB_PD.GetSize());
         System.out.println("DIAG - Process time (until now): " + nTotalRunTime / 1000.0);
+        System.out.println("DIAG - TEMP OUTLIER SET SIZE: " + GetOutliersFound().size());
         System.out.println("-------------------------------------------------------");
     }
 }
