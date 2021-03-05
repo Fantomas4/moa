@@ -85,7 +85,7 @@ public abstract class MyBaseOutlierDetector extends AbstractClusterer {
     protected double nTimePerObj;    
     
     private Clustering myClusters = null;
-    private TreeSet<Outlier> outliersFound;
+    protected TreeSet<Outlier> outliersFound;
     private Long m_timePreObjSum;
     private int nProcessed;
     private static final int m_timePreObjInterval = 100;

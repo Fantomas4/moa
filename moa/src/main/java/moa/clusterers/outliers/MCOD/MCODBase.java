@@ -20,6 +20,8 @@
 
 package moa.clusterers.outliers.MCOD;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -186,8 +188,26 @@ public abstract class MCODBase extends MyBaseOutlierDetector {
         sb.append("\n  Total range queries: " + nRangeQueriesExecuted + "\n");
         sb.append("  Max memory usage: " + iMaxMemUsage + " MB\n");
         sb.append("  Total process time: " + String.format("%.2f ms", nTotalRunTime / 1000.0) + "\n");
-        
+        exportOutliersToFile();
         return sb.toString();
+    }
+
+    public void exportOutliersToFile() {
+        Set<Outlier> outliersDetected;
+        outliersDetected = GetOutliersFound();
+
+        try {
+            BufferedWriter bw = new BufferedWriter(new FileWriter("outliers.txt"));
+
+            for (Outlier outlier : outliersDetected) {
+                bw.write(Long.toString(outlier.id));
+                bw.newLine();
+            }
+
+            bw.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     
     Long GetWindowEnd() {
